@@ -110,7 +110,7 @@ void Graph2::Node::initAg ()
 
    char buf[64];
    snprintf (buf, 64, "n%d", index);
-   node = agnode(graph->graph, buf, TRUE);
+   node = agnode(graph->graph, buf, 1);
    agsafeset (node, (char*)"shape", (char*)"rect", (char*)"");
 }
 
@@ -152,7 +152,7 @@ void Graph2::Edge::initAg ()
 
    char buf[64];
    snprintf (buf, 64, "e%d", index);
-   edge = agedge (graph->graph, from->node, to->node, (char*)buf, TRUE);
+   edge = agedge (graph->graph, from->node, to->node, (char*)buf, 1);
 }
 
 void Graph2::Edge::cleanupAg ()

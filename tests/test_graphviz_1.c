@@ -10,15 +10,15 @@ int main(int argc, char *argv[])
    gvc = gvContext ();
    graph = agopen ("graph", Agdirected, NULL);
 
-   node1 = agnode(graph, "node1", TRUE);
+   node1 = agnode(graph, "node1", 1);
    agsafeset (node1, "width", "1", "");
    agsafeset (node1, "height", "1", "");
    
-   node2 = agnode(graph, "node2", TRUE);
+   node2 = agnode(graph, "node2", 1);
    agsafeset (node2, "width", "1", "");
    agsafeset (node2, "height", "1", "");
 
-   edge1 = agedge(graph, node1, node2, "edge1", TRUE);
+   edge1 = agedge(graph, node1, node2, "edge1", 1);
 
    puts ("---------- initially ----------");
    agwrite (graph, stdout);

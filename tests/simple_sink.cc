@@ -2,7 +2,7 @@
 #include "common/tools.hh"
 
 #include <unistd.h>
-#include <sys/timeb.h>
+#include <sys/time.h>
 
 namespace rtfl {
 
@@ -38,10 +38,12 @@ void SimpleSink::finish ()
 
 long SimpleSink::getCurrentTime ()
 {
-   struct timeb t;
-   if (ftime (&t) == -1)
-      syserr ("ftime() failed");
-   return t.time * 1000L + t.millitm;
+   struct timeval tv;
+
+   if (gettimeofday (&tv, NULL) != 0)
+      syserr ("gettimeofday() failed");
+
+   return tv.tv_sec * 1000L + tv.tv_usec / 1000L;
 }
 
 void SimpleSink::msg (const char *fmt, ...)

@@ -31,7 +31,7 @@
 
 #include <stdio.h>
 #include <fcntl.h>
-#include <Fl/Fl.H>
+#include <FL/Fl.H>
 
 using namespace lout::container::typed;
 
