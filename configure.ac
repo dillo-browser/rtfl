@@ -1,6 +1,6 @@
 dnl Process this file with aclocal, autoconf and automake.
 
-AC_INIT([rtfl], [0.1.1])
+AC_INIT([rtfl],[0.1.1])
 
 dnl Detect the canonical target build environment
 AC_CANONICAL_TARGET
@@ -29,7 +29,7 @@ AC_ARG_WITH(java-home,[  --with-java-home=DIR    Specify where to find the JDK],
 AC_PROG_CC
 AC_PROG_CXX
 AC_PROG_CPP
-AC_PROG_LIBTOOL
+LT_INIT
 
 dnl ----------------------------
 dnl Check our char and int types
