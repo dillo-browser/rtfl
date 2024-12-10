@@ -1,0 +1,63 @@
+#!/usr/bin/perl
+
+# RTFL
+#
+# Copyright 2014, 2015 Sebastian Geerken <sgeerken@dillo.org>
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+# Usage: rtfl-filter-out-classes [<classes> ...]
+#
+# Filter out all RTFL messages referring to objects belonging to a
+# specified set of classes. Each command line argument is a concrete
+# class or a (filename) pattern. The latter is useful to exclude whole
+# namespaces ("path::to::namespace::*").
+#
+# N. b. that parsing is slightly incorrect; escaping is (except partly
+# for classes) not considered.
+
+use File::FnMatch qw(:fnmatch);
+
+%removed_objects = { };
+
+open PIPE, "rtfl-objbase |";
+
+while(<PIPE>) {
+   if (/^\[rtfl-obj-1.[0-9]+][^:]*:[^:]*:[^:]*:(obj-)?create:([^:]*):(.*)$/) {
+      $removed = 0;
+      $o = $2;
+      $c1 = $3;
+      $c1 =~ s/\\:/:/g;
+      foreach $c2 (@ARGV) {
+         if (fnmatch ($c2, $c1)) {
+            $removed_objects{$o} = 1;
+            $removed = 1;
+         }
+      }
+      if (!$removed) { print; }
+   } elsif (/^\[rtfl-obj-1.[0-9]+][^:]*:[^:]*:[^:]*:(obj-)?(msg|set|enter|leave):([^:]*):/ &&
+            $removed_objects{$3}) {
+      # Suppress.
+   } elsif (/^\[rtfl-obj-1.[0-9]+][^:]*:[^:]*:[^:]*:(obj-)?(msg-(start|end)|delete|leave):(.*)$/ &&
+            $removed_objects{$4}) {
+      # Suppress.
+   } elsif (/^\[rtfl-obj-1.[0-9]+][^:]*:[^:]*:[^:]*:(obj-)?assoc:([^:]*):(.*)$/ &&
+            ($removed_objects{$2} || $removed_objects{$3})) {
+      # Suppress.
+   } else {
+      print;
+   }
+}
+
+close PIPE;

@@ -1,0 +1,997 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en">
+  <head>
+    <title>RTFL documentation</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+    <style type="text/css">
+      div.image, div.contents {
+        float: right;
+        margin: 0.5em 0 0.5em 1em
+      }
+
+      div.image, table.data {
+        text-align: center
+      }
+
+      div.contents {
+        width: 40%
+      }
+
+      p.imagedesc {
+         font-size: 0.8em;
+         font-style: italic
+      }
+
+      table.data {
+         border-collapse: collapse;
+      }
+
+      table.data td, table.data th {
+         padding: 0.1em 1em;
+         border: 1px solid;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>RTFL Documentation</h1>
+
+    <div class="contents">
+      <h2>Contents</h2>
+      
+      <ul>
+	<li><a href="#overview">Overview</a></li>
+	<li><a href="#synopsis">Synopsis</a></li>
+	<li><a href="#preparing_the_tested_program">Preparing the tested
+            program</a>
+	  <ul>
+	    <li><a href="#preparing_autoconfmake">Using RTFL with
+		<tt>autoconf</tt> and <tt>automake</tt></a></li>
+	  </ul>
+	</li>
+	<li><a href="#protocol_and_macros">Protocol and macros</a>
+	  <ul>
+	    <li><a href="#protocol_general_module">General module</a></li>
+	    <li><a href="#protocol_objects_module">Objects module</a></li>
+	  </ul>
+	</li>	    
+	<li><a href="#using_rtfl_objcount">Using <tt>rtfl-objcount</tt></a></li>
+	<li><a href="#using_rtfl_objview">Using <tt>rtfl-objview</tt></a>
+	  <ul>
+	    <li><a href="#rtfl_objview_basic_usage">Basic usage</a></li>
+	    <li><a href="#rtfl_objview_command_line_options">Command line
+		options</a></li>
+	    <li><a href="#rtfl_objview_navigation">Navigation</a></li>
+	    <li><a href="#rtfl_objview_hiding_commands">Hiding commands</a></li>
+	    <li><a href="#rtfl_objview_filtering_by_type">Filtering by
+		type</a></li>
+	    <li><a href="#rtfl_objview_stack_traces">Stack traces</a></li>
+	    <li><a href="#rtfl_objview_marks">Marks</a></li>
+	    <li><a href="#rtfl_objview_filtering_messages">Filtering
+		messages</a></li>
+	  </ul>
+	</li>
+	<li><a href="#using_rtfl_objbase">Using <tt>rtfl-objbase</tt></a></li>
+	<li><a href="#using_rtfl_tee">Using <tt>rtfl-tee</tt></a></li>
+	<li><a href="#scripts">Scripts</a></li>
+	<li><a href="#see_also">See also</a></li>
+      </ul>
+    </div>
+      
+    <h2 id="overview">Overview</h2>
+
+    <p>RTFL, which stands for <i>Read The Figurative Logfile</i>, is a
+      both a protocol for structured debug messages, as well as a
+      collection of programs (currently two, <tt>rtfl-objcount</tt>
+      and <tt>rtfl-objview</tt>) displaying these debug messages in a
+      semi-graphical way.</p>
+
+    <p>Programs are prepared to print these special debug messages to
+      standard output (typically controllable via <tt>#ifdef</tt>);
+      for C++, there is already a header file which provides
+      convenient macros. By passing the messages to a viewer program
+      (<tt>rtfl-objcount</tt>, <tt>rtfl-objview</tt>, or, in the
+      future, similar programs), it becomes simpler to determine what
+      the debugged program does.</p>
+
+    <h2 id="synopsis">Synopsis</h2>
+
+    <p>To use RTFL, prepare the program which is to be tested (see
+      <i><a href="#preparing_the_tested_program">Preparing the tested
+          program</a></i>), and run</p>
+
+    <p><tt><i>tested-program</i> | rtfl-objcount</tt><br/>
+      <tt><i>tested-program</i> | rtfl-objview [<i>options</i>]</tt></p>
+
+    <p>or, in the future, other programs, which will become part of
+      RTFL. The prepared, tested program will print special debug
+      messages to standard output, which will then be read
+      by <tt>rtfl-objcount</tt> or <tt>rtfl-objview</tt> via pipe. Of
+      course, using files instead of pipes is also possible.</p>
+
+    <p><tt>Rtfl-objcount</tt> does not yet support options, the ones
+      of <tt>rtfl-objview</tt> are described in the section
+      <i><a href="#rtfl_objview_command_line_options">Command line
+      options of <tt>rtfl-objview</tt></a></i>.</p>
+    
+    <p>Details on using <tt>rtfl-objcount</tt>
+      and <tt>rtfl-objview</tt> can be found in the
+      sections <i><a href="#using_rtfl_objcount">Using
+	  <tt>rtfl-objcount</tt></a></i>
+      and <i><a href="#using_rtfl_objview">Using
+          <tt>rtfl-objview</tt></a></i>, respectively. Furthermore,
+      there is a useful filter, <tt>rtfl-tee</tt>, which is described
+      in <i><a href="#using_rtfl_tee">Using <tt>rtfl-tee</tt></a></i>.</p>
+
+    <p>The filter <tt>rtfl-findrepeat</tt> has been moved
+      <a href="tipsandtricks.html#attic_rtfl_findrepeat">to the
+	attic</a>.
+
+    <h2 id="preparing_the_tested_program">Preparing the tested program</h2>
+
+    <p>The program to be tested must print special commands to
+      standard output. The file <tt>debug_rtfl.hh</tt>, included in
+      RTFL, provides some convenient macros. Both commands and macros
+      are described in the section
+      <i><a href="#protocol_and_macros">Protocol and macros</a></i>.
+      The macros are active only when the pre-processor variable
+      <tt>DBG_RTFL</tt> is defined. Furthermore, the full paths of the
+      source file names should be included into the commands; this
+      variant prefixes <tt>__FILE__</tt> with <tt>CUR_WORKING_DIR</tt>,
+      which has to be defined.</p>
+
+    <p>It is best to copy <tt>debug_rtfl.hh</tt> in your project, so
+      that there is no direct dependencies to RTFL. This file itself
+      is public domain, so there are no restrictions on <em>using</em>
+      RTFL.</p>
+
+    <p>See the <tt>tests</tt> directory for some examples. (But notice
+      that explicitly passing <tt>-DDBG_RTFL</tt>, as in
+      <tt>tests/Makefile.am</tt> is not “comme il faut”; instead,
+      provide a way to let the user decide.)</p>
+
+    <h3 id="preparing_autoconfmake">Using RTFL with <tt>autoconf</tt>
+      and <tt>automake</tt></h3>
+
+    <p>The file <b><tt>configure.ac</tt></b> of RTFL itself shows how
+      to handle this best by an option <tt>--enable-rtfl</tt>. First,
+      define this option:</p>
+    
+    <pre>AC_ARG_ENABLE(rtfl, [--enable-rtfl Build with RTFL messages])</pre>
+
+    <p>Later, a pre-processor variable has to be defined:</p>
+
+    <pre>if test "x$enable_rtfl" = "xyes" ; then
+  CXXFLAGS="$CXXFLAGS -DDBG_RTFL"
+fi</pre>
+
+    <p>Furthermore, we need <tt>CUR_WORKING_DIR</tt>; this is defined
+      later; here we define:</p>
+    
+    <pre>BASE_CUR_WORKING_DIR=`pwd`</pre>
+
+    <p>and:</p>
+
+    <pre>AC_SUBST(BASE_CUR_WORKING_DIR)</pre>
+    
+    <p>Finally, all instances of <b><tt>Makefile.am</tt></b> have to
+      be prepared. Any file <tt>foo/Makefile.am</tt> should
+      contain:</p>
+
+    <pre>AM_CPPFLAGS = -DCUR_WORKING_DIR='"@BASE_CUR_WORKING_DIR@/foo"'</pre>
+
+    <h2 id="protocol_and_macros">Protocol and macros</h2>
+
+    <p>This section describes both the commands which are printed to
+      standard output, as well as the macros from <tt>debug_rtfl.hh</tt>.</p>
+
+    <p>The whole protocol is divided into modules (currently only
+      one). Each protocol module has a version number consisting of a
+      positive major number and a minor number, which may be 0. The
+      major number changes when the protocol module changes in an
+      incompatible way, while compatible changes affect the minor
+      number.<sup><a id="ref-protocol-compat" href="#note-protocol-compat">[1]</a></sup><sup><a id="ref-protocol-version" href="#note-protocol-version">[2]</a></sup></p>
+
+
+    <p>Generally, the colon (<tt>:</tt>) is used to divide different
+      parts of a command. To use the colon in a literal way, not for
+      division,it can be quoted using the backslash (<tt>\</tt>).
+      Likewise, a literally used backslash must be quoted
+      (<tt>\\</tt>).</p>
+
+    <p>In the detailed descriptions below, commands are shortened. All
+      commands begin with</p>
+
+    <p><tt>[rtfl-<i>module</i>-<i>major version</i>.<i>minor version</i>]<i>file name</i>:<i>line number</i>:<i>process identifier</i>:</tt></p>
+
+    <p>where the prefix <tt>[rtfl-<i>module</i>-<i>major version</i>.<i>minor version</i>]</tt>
+      is used to filter RTFL messages from other messages printed to
+      standard output. <I>Major version</i> and <i>minor version</i>
+      refer to the version of the protocol
+      module.<sup><a id="ref-mix-versions" href="#note-mix-versions">[3]</a></sup>   
+      Then follows the file name and the line number, where this
+      message is triggered (this may be used for extensions, like
+      simple navigation through the source code). The last part is a
+      process (or thread) identifier, e.&nbsp;g. as returned
+      by <tt>getpid(2)</tt>. Then follows (not shown here)
+      the <i>command identifier</i>, which defines basically what to
+      do.</p>
+
+    <p>It is common to combine protocol module and command identifier,
+      separated by a hyphen. For example, <tt>obj-create</tt> refers
+      to the command <tt>create</tt> of the module <tt>obj</tt>.
+
+    <p>The following descriptions only give the part following this common
+      prefix.<sup><a id="ref-old-protocol" href="#note-old-protocol">[4]</a></sup></p>
+
+    <h3 id="protocol_general_module">General module</h3>
+
+    <p>The general module is identified by <tt>gen</tt>, the current
+      version is 1.0.</p>
+
+    <p>The general module contains messages intended for use with other
+      modules.</p>
+    
+    <p><b>Command:</b> <tt>time:<i>usecs</i></tt><br/>
+      <b>Macro:</b> <tt>DBG_GEN_TIME()</tt><br/></p>
+
+    <p>Define the point in time of the <em>previous</em> command, in micro
+      seconds since a defined, but unspecified, origin. Can be used for simple
+      profiling.</p>
+           
+    <h3 id="protocol_objects_module">Objects module</h3>
+
+    <p>The object module is identified by <tt>obj</tt>, the current
+      version is 1.0.</p>
+
+    <p>All commands from this module are related to an object, which
+      is typically the first argument following the command
+      identifier. For C++, the value of <tt>this</tt>, as printed
+      by <tt>printf("%p", this)</tt> is most suitable. The first
+      occurrence of a specific object will "define" the object; a
+      specific command is not needed (but see
+      <a href="#protocol_obj_create"><tt>create</tt></a>).</p>
+
+    <p>For most macros dealing with <tt>this</tt>, there is an
+      additional macro with the suffix <tt>_O</tt>, which expects the
+      object explicitly. Use these in special cases
+      when <tt>this</tt> is not suitable. They are not mentioned here;
+      look into <tt>debug_rtfl.hh</tt> for details.</p>
+
+    <p id="protocol_obj_msg"><b>Command:</b>
+      <tt>msg:<i>object</i>:<i>aspect</i>:<i>priority</i>:<i>msg</i></tt><br/>
+      <b>Macros:</b><br/>
+      <tt>DBG_OBJ_MSG(<i>aspect</i>, <i>priority</i>, <i>msg</i>)</tt><br/>
+      <tt>DBG_OBJ_MSGF(<i>aspect</i>, <i>priority</i>, <i>fmt</i> ...)</tt></p>
+
+    <p>Display a message (<i>msg</i>) related to an object. The
+      macro <tt>DBG_OBJ_MSG</tt> expects a simple text,
+      while <tt>DBG_OBJ_MSGF</tt> can be used to use
+      <tt>printf(3)</tt> like formatting.</p>
+
+    <p><i>Aspects</i> are arbitrary keywords, which can be used to
+      focus on different parts of a program (which may affect the same
+      objects). <i>Priorities</i> are positive numbers defining how
+      important a message should be regarded, with 0 denoting the most
+      important message. Both can be filtered by the viewer programs,
+      see <i><a href="#rtfl_objview_filtering_messages">Filtering
+      messages in <tt>rtfl-objview</tt></a></i>.</p>
+
+    <p>A very simple variant of HTML can be used in the messages, the
+      tags &lt;i&gt; and &lt;b&gt; display italics and bold text,
+      respectively.</p>
+
+    <p id="protocol_obj_mark"><b>Command:</b>
+      <tt>mark:<i>object</i>:<i>aspect</i>:<i>priority</i>:<i>mark</i></tt><br/>
+      <tt>DBG_OBJ_MARK(<i>aspect</i>, <i>priority</i>, <i>mark</i>)</tt><br/>
+      <tt>DBG_OBJ_MARKF(<i>aspect</i>, <i>priority</i>, <i>fmt</i> ...)</tt></p>
+
+    <p>Very similar to
+      <a href="#protocol_obj_msg"><tt>msg</tt></a>, but
+      <i>marks</i> are handled in a privileged way;
+      <a href="#using_rtfl_objview"><tt>rtfl-objview</tt></a> displays
+      them in a seperate menu, so it is simple to select them in a
+      fast way.</p>
+
+    <p>Marks are used to mark special positions within the streams of
+      RTFL commands; although there are macros, they are typically
+      added by filters, which scan RTFL messages for notable
+      occurences. An example is
+      <a href="#scripts"><tt>rtfl-stracktraces</tt></a> with the
+      option <tt>-m</tt>.</p>
+
+    <p id="protocol_obj_start_end"><b>Commands:</b>
+      <tt>msg-start:<i>object</i></tt> and
+      <tt>msg-end:<i>object</i></tt><br/>
+      <b>Macros:</b> <tt>DBG_OBJ_MSG_START()</tt> and
+      <tt>DBG_OBJ_MSG_END()</tt></p>
+        
+    <p>Define the start and the end of a section, like a
+      function. Especially useful for recursions, where these commands
+      are nested.</p>
+
+    <p id="protocol_obj_enter_leave"><b>Commands:</b>
+      <tt>enter:<i>object</i>:<i>aspect</i>:<i>priority</i>:<i>funname</i>:<i>args</i></tt>
+      and <tt>leave:<i>object</i></tt>
+      or <tt>leave:<i>object</i>:<i>vals</i></tt><br/>
+      <b>Macros:</b><br/>
+      <tt>DBG_OBJ_ENTER0(<i>aspect</i>, <i>priority</i>, <i>funname</i>)</tt> (for functions/methods with no arguments)<br/>
+      <tt>DBG_OBJ_ENTER(<i>aspect</i>, <i>priority</i>, <i>funname</i>, <i>fmt</i> ...)</tt><br/>
+      <tt>DBG_OBJ_LEAVE()</tt><br/>
+      <tt>DBG_OBJ_LEAVE_VAL(<i>fmt</i> ...)</tt><br/>
+      <tt>DBG_OBJ_LEAVE_VAL0(<i>val</i>)</tt></p>
+
+    <p>States that a function or a method has been entered or left,
+      respectively. <i>Aspect</i> and <i>priority</i> have the same
+      meaning as for <a href="#protocol_obj_msg"><tt>msg</tt></a>.
+      The <tt>printf(3)</tt> like format <i>fmt</i> (macros
+      <tt>DBG_OBJ_ENTER</tt> and <tt>DBG_OBJ_LEAVE_VAL</tt>) must
+      match the following arguments. Any <tt>leave</tt> refers to
+      the last “open” <tt>enter</tt>.
+
+    <p><tt>Leave</tt> supports optional return values, the
+      macro <tt>DBG_OBJ_LEAVE_VAL</tt> should be used in this
+      case. Multiple values are allowed; either with languages which
+      support this, or indirectly by returning values by passing
+      references as arguments. For a literal text value, use
+      <tt>DBG_OBJ_LEAVE_VAL0</tt>.</p>
+
+    <p id="protocol_obj_create"><b>Command:</b>
+      <tt>create:<i>object</i>:<i>class</i></tt><br/>
+      <b>Macro:</b> <tt>DBG_OBJ_CREATE(<i>class</i>)</tt></p>
+    
+    <p>Assigns a class to an object. This is not really necessary,
+      but without this command, the class of an object is not known,
+      and for the user of RTFL, difficult to guess.</p>
+
+    <p>When multiple classes are assigned to one object, the last
+      class is valid. This way, calling <tt>DBG_OBJ_CREATE()</tt> in
+      both constructors, the one of the base class (which is called
+      first) and the one of the sub class (which is called second),
+      will work properly, by eventually assigning the class of the sub
+      class.</p>
+
+    <p>For C++, it is recommended to use the fully qualified class
+      name (<tt>path::to::namespace::ClassName</tt>).</p>
+
+    <p id="protocol_obj_delete"><b>Command:</b>
+      <tt>delete:<i>object</i></tt><br/>
+      <b>Macro:</b> <tt>DBG_OBJ_DELETE()</tt></p>
+    
+    <p>Deletes an object. Can be called multiple times for one object,
+      when each destructor the class hierarchy prints this
+      command.</p>
+
+    <p>After <tt>delete</tt> has been called as often as
+      <a href="#protocol_obj_create"><tt>create</tt></a> before, the object
+      identifier must be regarded as unassigned, i.&nbsp;e., if it is used
+      again, it is regarded as identifying a new object.</p>
+
+    <p id="protocol_obj_ident"><b>Command:</b>
+      <tt>ident:<i>object1</i>:<i>object2</i></tt><br/>
+      <b>Macro:</b> <tt>DBG_OBJ_BASECLASS(<i>class</i>)</tt></p>
+    
+    <p>This command defines two objects as identical, so that all
+      commands for <i>object1</i> and <i>object2</i> will be treated
+      in the same way, in a non-distinguishable way.
+
+    <p>The reasoning behind this command is shown by the macro, and
+      lies in the way how C++ handles multiple inheritance. Assume a
+      class <tt>C</tt> which has two super-classes, <tt>A</tt>
+      and <tt>B</tt>. Typically, when regarding instances
+      of <tt>C</tt> as <tt>A</tt> (cast to <tt>A*</tt>), the value
+      of <tt>this</tt> will not change. However, when regarded
+      as <tt>B</tt>, the value will be different,
+      typically <tt>sizeof(A)</tt> bytes larger.</p>
+
+    <p>For this reason, <tt>DBG_OBJ_CREATE</tt> should, at least for
+      cases of multiple inheritance, be followed
+      by <tt>DBG_OBJ_BASECLASS</tt>:
+      
+    <p><tt>DBG_OBJ_CREATE(C);</tt><br/>
+      <tt>DBG_OBJ_BASECLASS(A);</tt><br/>
+      <tt>DBG_OBJ_BASECLASS(B);</tt></p>
+
+    <p><b>Command:</b> <tt>noident</tt></p>
+    
+    <p>This command tells the processing program that
+     <a href="#protocol_obj_ident"><tt>obj-ident</tt></a> is never used, which
+     makes it unnecessary to wait until the (non-)identity of object has been
+     clarified.</p>
+ 
+    <p id="protocol_obj_assoc"><b>Command:</b>
+      <tt>assoc:<i>parent</i>:<i>child</i></tt><br/>
+      <b>Macros:</b><br/>
+      <tt>DBG_OBJ_ASSOC(<i>parent</i>, <i>child</i>)</tt><br/>
+      <tt>DBG_OBJ_ASSOC_PARENT(<i>parent</i>)</tt><br/>
+      <tt>DBG_OBJ_ASSOC_CHILD(<i>child</i>)</tt></p>
+    
+    <p>Creates an association between two objects. Objects have some
+      kind of hierarchy, not limited to a tree, not even a DAG, but
+      still not symmetric: <tt>DBG_OBJ_ASSOC(<i>x</i>, <i>y</i>)</tt>
+      is to be distinguished from <tt>DBG_OBJ_ASSOC(<i>y</i>, <i>x</i>)</tt>.
+
+    <p id="protocol_obj_set"><b>Command:</b>
+      <tt>set:<i>object</i>:<i>var</i>:<i>val</i></tt><br/>
+      <b>Macros:</b><br/>
+      <tt>DBG_OBJ_SET_<i>TYPE</i>(<i>var</i>, <i>val</i>)</tt><br/>
+      <tt>DBG_OBJ_ARRSET_<i>TYPE</i>(<i>var</i>, <i>ind</i>, <i>val</i>)</tt><br/>
+      <tt>DBG_OBJ_ARRATTRSET_<i>TYPE</i>(<i>var</i>, <i>ind</i>, <i>attr</i>, <i>val</i>)</tt></p>
+
+    <p>Set or change an attribute of an object. The name can be
+      divided by using the dot (<tt>.</tt>), both for sub structures
+      and for arrays. The different macros are used to format
+      different types:</p>
+
+    <table class="data">
+      <thead>
+	<tr>
+	  <th><i>TYPE</i></th>
+	  <th>C++ type of <i>val</i></th>
+	  <th>Output</th>
+	</tr>
+      </thead>
+      <tbody>
+	<tr>
+	  <td><tt>NUM</tt></td>
+	  <td><tt>int</tt></td>
+	  <td><i>val</i></td>
+	</tr>
+	<tr>
+	  <td><tt>SYM</tt></td>
+	  <td><tt>char*</tt></td>
+	  <td><i>val</i></td>
+	</tr>
+	<tr>
+	  <td><tt>BOOL</tt></td>
+	  <td><tt>bool</tt></td>
+	  <td><tt>true</tt> or <tt>false</tt></td>
+	</tr>
+	<tr>
+	  <td><tt>STR</tt></td>
+	  <td><tt>char*</tt></td>
+	  <td><tt>"</tt><i>val</i><tt>"</tt></td>
+	</tr>
+	<tr>
+	  <td><tt>PTR</tt></td>
+	  <td><tt>void*</tt></td>
+	  <td><i>val</i></td>
+	</tr>
+	<tr>
+	  <td><tt>COL</tt></td>
+	  <td><tt>int</tt> (<tt>0x<i>RRGGBB</i></tt>, interpreted as RGB
+	    color)</td>
+	  <td><tt>#<i>RRGGBB</i></tt></td>
+	</tr>
+      </tbody>
+    </table>
+    
+    <p>Furthermore, variants use the dot notation for array
+      elements. The last variant is used for attributes of structures,
+      which are elements of an array. (For even more complex
+      notations, you can, of course, define new macros.)</p>
+
+    <p id="protocol_obj_class_color"><b>Command:</b>
+      <tt>class-color:<i>class</i>:<i>color</i></tt><sup><a id="ref-obj-color-old" href="#note-obj-color-old">[5]</a></sup><br/>
+      <b>Macro:</b> <tt>DBG_OBJ_CLASS_COLOR(<i>class</i>,
+	<i>color</i>)</tt><sup><a id="ref-obj-class-color-old" href="#note-obj-class-color-old">[6]</a></sup></p>
+
+    <p>Defines a color for groups of class names. <i>Classes</i> takes
+      the form of patterns as defined by <tt>fnmatch(3)</tt>,
+      e.&nbsp;.g. <tt>path::to::namespace::*</tt>; <i>color</i> is
+      given as <tt>#<i>RGB</i></tt> or <tt>#<i>RRGGBB</i></tt>.</p>
+
+    <p>When more than one pattern matches, the most specific is
+      applied.<sup><a id="ref-class-color-specifity" href="#note-class-color-specifity">[7]</a></sup><sup><a id="ref-class-color-specifity-old" href="#note-class-color-specifity-old">[8]</a></sup></p>
+
+    <p id="protocol_obj_object_color"><b>Command:</b>
+      <tt>object-color:<i>object</i>:<i>color</i></tt></p>
+
+    <p>Defines a color for single objects. Like in
+      <a href="#protocol_obj_class_color">class-color</a>, <i>color</i>
+      is given as <tt>#<i>RGB</i></tt> or <tt>#<i>RRGGBB</i></tt>.</p>
+
+    <p>Object colors are preferred over
+      <a href="#protocol_obj_class_color">class colors</a>.
+
+    <h2 id="using_rtfl_objcount">Using <tt>rtfl-objcount</tt></h2>
+
+    <p><tt>Rtfl-objcount</tt> reads RTFL commands from the
+      <a href="#protocol_objects_module">objects module</a> via
+      standard input, simply <em>counts</em> the number of instances
+      of each class, and shows them in a table, which is especially
+      useful to examine memory problems. Use <i>New snapshot</i> from
+      the <i>Snapshot</i> menu to preserve a current state: a column
+      is added, and new changes are only applied to the most right
+      column.
+
+    <p>Like <a href="#using_rtfl_objbase"><tt>rtfl-objbase</tt></a>,
+      <tt>rtfl-objcount</tt> first reads commands from a file <tt>.rtfl</tt> in
+      the current directory, which typically contains commands for the program
+      to be debugged.</p>
+      
+    <h2 id="using_rtfl_objview">Using <tt>rtfl-objview</tt></h2>
+
+    <p><tt>Rtfl-objview</tt> reads RTFL commands from the
+      <a href="#protocol_objects_module">objects module</a> via
+      standard input, and displays them as a diagram, with all
+      commands related to one object as a box, and showing the
+      relations between the objects.</p>
+
+    <p>Like <a href="#using_rtfl_objbase"><tt>rtfl-objbase</tt></a>,
+      <tt>rtfl-objview</tt> first reads commands from a file <tt>.rtfl</tt> in
+      the current directory, which typically contains commands for the program
+      to be debugged. (See also <a href="#rtfl_objview_option_b">option
+        <tt>-B</tt></a>.)</p>
+
+    <h3 id="rtfl_objview_basic_usage">Basic usage</h3>
+    
+    <div class="image">
+      <img src="object-box-01.png"/>
+      <p class="imagedesc">A typical object box</p>
+    </div>
+
+    <p>All messages related to an object will be displayed in a box
+      showing</p>
+
+    <ul>
+      <li>the object identifier, and when known, the class, at the top;</li>
+      <li>the attributes in the middle part;</li>
+      <li>all messages in the lower part.</li>
+    </ul>
+
+    <p>At different levels, parts of a box can be toggled between
+      visible and invisible (or, instead, replaced by a much smaller
+      part, as e.&nbsp;g. used for attributes). This is indicated in
+      the usual way, by “+” (to show) and “−” (to hide) in the upper
+      left corner.</p>
+
+    <p>For attributes, the structure based on the dot notation
+      (see <a href="#protocol_obj_set"><tt>set</tt></a>) creates a
+      tree whose parts can be toggled between visible and
+      invisible. The complete history of values is displayed, but can
+      be hidden by instead only showing the recent value.</p>
+
+    <p>In the messages part,
+      <a href="#protocol_obj_start_end"><tt>msg-start</tt> and
+        <tt>msg-end</tt></a> change the indentation of the
+      messaged between, and also insert the messages <i>start</i>
+      and <i>end</i>.</p>
+    
+    <p>Associations lead to a respective positioning of the object
+      boxes and connections by arrows, as well as a message in the
+      messages part.</p>
+    
+    <p>(Many aspects can be configured, see
+      <i><a href="#rtfl_objview_filtering_by_types">Filtering by
+      types</a></i>.)</p>
+
+    <h3 id="rtfl_objview_command_line_options">Command line options</h3>
+
+    <p><tt>Rtfl-objview</tt> supports these options:</p>
+
+    <dl>
+      <dt><tt>-a</tt> <i>aspect</i>, <tt>-A</tt> <i>aspect</i></dt>
+      <dd>Show (<tt>-a</tt>) or hide (<tt>-A</tt>) an aspect
+	(see <i><a href="#rtfl_objview_filtering_messages">Filtering
+	messages</a></i>). This is equivalent to turning on/off an
+	aspect from the <i>Aspects</i> menu. The aspect “*” refers to
+	all, so this option is then equivalent to <i>Show/Hide all</i>
+	aspects. Both options can be used multiple times, and are
+	processed in the order in which they are given; so <tt>-A "*"
+	-a foo</tt> will only show messages with the aspect
+	“foo”.</dd>
+
+      <dt id="rtfl_objview_option_b"><tt>-b</tt>, <tt>-B</tt></dt>
+      <dd>Do (<tt>-b</tt>) or do not (<tt>-B</tt>) apply <tt>.rtfl</tt> and
+        filtering identities (what
+        <a href="#using_rtfl_objbase"><tt>rtfl-objbase</tt></a> does).</dd>
+
+      <dt><tt>-m</tt>, <tt>-M</tt></dt>
+      <dd>Show (<tt>-m</tt>) or hide (<tt>-M</tt>) the messages of all
+	object boxes. Hiding (<tt>-M</tt>) is useful when examining
+	attributes; the messages can be shown by clicking on
+	“+”. (Since showing is the default, the option <tt>-m</tt>
+	only exists for reasons of symmetry.)</dd>
+
+      <dt><tt>-o</tt>, <tt>-O</tt></dt>
+      <dd>Show (<tt>-o</tt>) or hide (<tt>-O</tt>) the contents of all
+	object boxes. Hiding (<tt>-O</tt>) can be useful to get an
+	overview over the relations, without initially caring about
+	the contents; the contents can be shown by clicking on
+	“+”. (Since showing is the default, the option <tt>-o</tt>
+	only exists for reasons of symmetry.)</dd>
+
+      <dt><tt>-p</tt> <i>priority</i></dt>
+      <dd>Set the priority of messages (see
+	<i><a href="#rtfl_objview_filtering_messages">Filtering
+	    messages</a></i>). This is equivalent to choosing the
+	respective value in the <i>Priorities</i> menu. The
+	<i>priority</i> “*” refers to <i>No limit</i>.</dd>
+
+      <dt><tt>-t</tt> <i>types</i>, <tt>-T</tt> <i>types</i></dt>
+      <dd>Show (<tt>-t</tt>) or hide (<tt>-T</tt>) certain command types
+	(see <i><a href="#rtfl_objview_filtering_by_types">Filtering by
+	types</a></i>). <i>Types</i> is a sequence of any of these characters: “c”
+	for creations, “i” for indentations, “m” for messages, “a” for marks, “f”
+	for functions, “s” for association, “t” for attributes, and “d” for
+	deletions.  This is equivalent to turning on/off the respective types in
+	the <i>Commands</i> menu.</dd>
+
+      <dt><tt>-v</tt> <i>viewer</i></dt>
+      <dd>Set the program called for viewing code (see
+	<i><a href="#rtfl_objview_navigation">Navigation</a></i>).
+	<i>Viewer</i> is a command (passed to <tt>system(3)</tt>),
+	which may contain these variables: “%n” is replaced by the
+	line number, “%p” is replaced by the path of the file. Notice
+	that you should append “&” to avoid blocking. The default is
+	“<tt>xterm -e 'vi +%n %p' &</tt>”; another nice option is
+	“<tt>emacsclient -n %n %p</tt>”. (Also notice that there is
+	currently no quoting done for expanding “%p”, so it is best to
+	keep your file names as simple as possible.)
+    </dl>
+
+    <h3 id="rtfl_objview_navigation">Navigation</h3>
+
+    <p>The commands (from the object module)
+      <a href="#protocol_obj_start_end"><tt>msg-start</tt>,
+	<tt>msg-end</tt></a>,
+      <a href="#protocol_obj_enter_leave"><tt>enter</tt>,
+	<tt>leave</tt></a>,
+      <a href="#protocol_obj_msg"><tt>msg</tt></a>,
+      <a href="#protocol_obj_mark"><tt>mark</tt></a>,
+      <a href="#protocol_obj_set"><tt>set</tt></a>,
+      <a href ="#protocol_obj_assoc"><tt>assoc</tt></a>,
+      <a href="#protocol_obj_create"><tt>create</tt></a>, and 
+      <a href="#protocol_obj_delete"><tt>delete</tt></a> are
+      <em>navigable</em>. They are assigned a serial numbers (starting
+      with 0) which is preceding the actual message; furthermore, they
+      can be selected (by clicking on the respective message) and
+      navigated with the commands <i>Previous</i> and <i>Next</i> from
+      the <i>Command</i> menu, or the respective keyboard
+      accelerators. Furthermore, <i>View Code</i> calls an external
+      (and <a href="#rtfl_objview_command_line_options">configurable</a>)
+      viewer or editor to show the line in the code where the
+      selected message was printed.</p>
+
+    <p>Both preceding the serial number on one hand, and selection and
+      highlighting on the other, refers to the respective message in
+      the lower part of the object box (<tt>msg-start</tt>,
+      <tt>msg-end</tt>, <tt>msg</tt>, <tt>mark</tt>,
+      <tt>assoc</tt>, <tt>create</tt>, <tt>delete</tt>), or (<tt>set</tt>)
+      for the message in the attribute value history (click “+” to
+      show), respectively </p>
+
+    <p>Some navigable commands are <i>related</i>; by
+      activating <i>Switch between related</i> from the
+      <i>Commands</i> menu switches between them. Currently
+      <tt>enter</tt> and <tt>leave</tt> are regarded, as well as
+      <tt>msg-start</tt> and <tt>msg-end</tt>.</p>
+    
+    <h3 id="rtfl_objview_hiding_commands">Hiding commands</h3>
+
+    <p>Displaying of navigable commands can be limited to any
+      region. Select a command (mouse or navigating) and choose from
+      the <i>Command</i> menu:</p>
+
+    <ul>
+      <li><i>Hide before</i> to hide all commands before selected one
+        (which so becomes the first visible command);</li>
+      <li><i>Hide after</i> likewise to hide all commands after
+        selected one (which becomes the last visible command);</li>
+      <li><i>Hide all</i> to hide all commands but show new commands
+	(equivalent to hiding before the next command to be
+	created);</li>
+      <li><i>Show before</i> to undo <i>Hide before</i>;</li>
+      <li><i>Show after</i> to undo <i>Hide after</i>;</li>
+      <li><i>Show all</i> to show all commands again.</li>
+    </ul>
+    
+    <p>Notice that the serial numbers are recalculated, so that the
+      first <em>visible</em> command has the number 0. This is also
+      valid for commands filtered out
+      (<a href="#rtfl_objview_filtering_by_type">by type</a>, or
+      <a href="#rtfl_objview_filtering_messages">by aspect and
+      priority</a>).</p>
+
+    <h3 id="rtfl_objview_stack_traces">Stack traces</h3>
+
+    <p>Based on <a href="#protocol_obj_enter_leave"><tt>enter</tt> and
+	<tt>leave</tt></a>, the command <i>Show stack trace</i> from
+      the <i>Command</i> menu opens a new window showing
+      all <tt>enter</tt> commands leading to the selected command. As
+      long as these are not hidden (which is represented by italics),
+      you can navigate to these by clicking on <i>Jump to</i>.</p>
+
+    <h3 id="rtfl_objview_marks">Marks</h3>
+
+    <p>All <a href="#protocol_obj_mark"><tt>marks</tt></a> are added to
+      the <i>Marks</i> menu, from where they can be directly
+      selected, as long as they are not hidden.</p>
+
+    <h3 id="rtfl_objview_filtering_by_type">Filtering by type</h3>
+
+    <p>All <a href="#rtfl_objview_navigation">navigable commands</a>
+      can be filtered by types, by using entries in the <i>Command</i>
+      menu. In all cases, this refers to the navigable part of the
+      command; other effects (indentation itself, current value of an
+      attribute, arrows for associations) are not affected.</p>
+
+    <ul>
+      <li><i>Creations</i> refers to
+	<a href="#protocol_obj_create"><tt>create</tt></a>,</li>
+      <li><i>Indentations</i> to 
+	<a href="#protocol_obj_start_end"><tt>msg-start</tt> and
+          <tt>msg-end</tt></a>,</li>
+      <li><i>Messages</i> to
+	<a href="#protocol_obj_msg"><tt>msg</tt></a>,</li>
+      <li><i>Marks</i> to
+	<a href="#protocol_obj_mark"><tt>mark</tt></a>,</li>
+      <li><i>Functions</i> to
+	<a href="#protocol_obj_enter_leave"><tt>enter</tt> and
+	  <tt>leave</tt></a>,</li>
+      <li><i>Associations</i> to
+	<a href="#protocol_obj_assoc"><tt>assoc</tt></a>,</li>
+      <li><i>Attributes</i> to
+	<a href="#protocol_obj_set"><tt>set</tt></a>, and</li>
+      <li><i>Deletions</i> to
+	<a href="#protocol_obj_delete"><tt>delete</tt></a>.</li>
+    </ul>
+
+    <p>By default, indentation messages are turned off, all others are
+      turned on.</p>
+
+    <h3 id="rtfl_objview_filtering_messages">Filtering messages</h3>
+
+    <p><a href="#protocol_obj_msg">Message commands</a> can be
+      filtered by aspects and priorities.</p>
+
+    <p>All aspects defined by the program are visible in
+      the <i>Aspects</i> menu, alphabetically sorted, and can be
+      toggled individually. <i>Show all</i> and <i>Hide all</i> not
+      only affect all aspects already shown in the <i>Aspects</i>
+      menu, but also define the default value for newly added aspects
+      (initially turned on, or initially turned off,
+      respectively).</p>
+
+    <p>Likewise, the <i>Priorities</i> menu contains all priorities,
+      numerically sorted. Choosing one defines the <em>maximal</em>
+      priority number (and so minimal importance); anything above this
+      number (and so less important) is not shown. <i>No limit</i>
+      will not filter any messages by priority.</p>
+
+    <p><i>Note:</i> Both aspects and priorities should be sorted
+      (aspects alphabetically, priorities numerically), which is not
+      yet the case. Especially for priorities, this can become
+      confusing. Also, version 0.0.7 contains a bug that <i>No
+      limit</i> is not selected initially, when it should be. (This is
+      only a visualization problem, filtering works.)</p>
+
+    <h2 id="using_rtfl_objbase">Using <tt>rtfl-objbase</tt></h2>
+
+    <p><tt>Rtfl-objbase</tt> is a filter which reads RTFL commands from the
+      <a href="#protocol_objects_module">objects module</a> and writes
+      them again to standard output, after
+
+    <ul>
+      <li>reading and applying commands from a file <tt>.rtfl</tt> in the
+        current directory (which typically contains commands for the program to
+        be debugged),</li>
+      <li>dealing with <a href="#protocol_obj_ident"><tt>obj-ident</tt></a>:
+        identities declared as identical are replaced by actually
+        identical identites, so a program processing the output may simply
+        ignore <tt>obj-ident</tt>;</li>
+      <li>dealing with <a href="#protocol_obj_delete"><tt>obj-delete</tt></a>
+        and replacing re-used identities of deleted objects by new
+          identities;</li>
+      <li>furthermore, the newest version is used for the output.</li>
+    </ul>
+
+    <p><tt>Rtfl-objbase</tt> is usefully for
+      <a href="#scripts">scripts</a>.</p>
+    
+    <h2 id="using_rtfl_tee">Using <tt>rtfl-tee</tt></h2>
+
+    <p><tt>Rtfl-tee</tt> is a simple program which works similar
+      to <tt>tee(1)</tt>: it copies standard input to standard output
+      as well as to a new pipe which is connected to standard input of
+      another process. The exact syntax is:</p>
+
+    <p><tt>rtfl-tee [-b] [--] <i>command</i> [<i>arguments</i> ...]</tt></p>
+
+    <p>All <i>arguments</i> refer to <i>command</i>.</p>
+
+    <p>The option <tt>-b</tt> enables the <i>bypass</i> mode, in which
+      the standard output of <i>command</i> is piped to
+      <tt>rtfl-tee</tt>, which prints both its own standard input and
+      the standard output of <i>command</i> line by line, so that the
+      lines from both streams are preserved. Use this
+      when <i>command</i> is a filter and you want to mix both the
+      original and the filtered stream in a simple way. Notice that no
+      order of the lines is guaranteed.</p>
+
+    <p>Everything after <tt>--</tt> is regarded as <i>command</i>. Use
+      this for commands starting with “-”.</p>
+
+    <p>A typical (simple) example:</p>
+
+    <p><tt><i>tested-program</i> | rtfl-tee rtf-objview -O | rtfl-objcount</tt></p>
+    
+    <p>This will start <tt><i>tested-program</i></tt> in a way that
+      the output is passed both
+      to <a href="#using_rtfl_objview"><tt>rtfl-objview</tt></a>
+      (started with option <tt>-O</tt>)
+      and <a href="#using_rtfl_objcount"><tt>rtfl-objcount</tt></a>.
+
+    <p>An example for the bypass mode is given in the section
+      <i><a href="tipsandtricks.html#transformation_of_attributes">Transformation
+      of attributes</a></i> in <i>Tips and tricks</i>.</p>
+      
+    <h2 id="scripts">Scripts</h2>
+    
+    <p>Part of the RTFL package are some scripts:</p>
+
+    <ul>
+      <li><tt>rtfl-check-objects</tt>, which uses RTFL messages to
+	check for invalid object access,</li>
+      <li><tt>rtfl-filter-out-classes</tt>, which helps filtering out
+	classes not currently interesting (a function which should
+	become part
+	of <a href="#using_rtfl_objview"><tt>rtfl-objview</tt></a>),</li>
+      <li><tt>rtfl-objfilter</tt>, which filters messages by types,
+	aspects and priorities (as
+	<a href="#using_rtfl_objview"><tt>rtfl-objview</tt></a>
+	would do it),</li>
+      <li><tt>rtfl-objtail</tt>, which limits a stream of RTFL
+	messages, and</li>
+      <li><tt>rtfl-stacktraces</tt>, which prints stacktraces leading
+	to a specific method, or helps, as a filter, finding such
+	stack traces.</li>
+    </ul>
+
+    <p>See the comments at the respective scripts for more information
+      on usage.</p>
+
+    <p>The scripts <tt>rtfl-filter-out-classes</tt>,
+      <tt>rtfl-objfilter</tt>, <tt>rtfl-objtail</tt>, and (with
+      options <tt>-e</tt> and <tt>-m</tt>) <tt>rtfl-stacktraces</tt>
+      are used as filters: if e.&nbsp;g. you want to
+      use <tt>rtfl-objview</tt> but ignore all classes of the
+      package <tt>some::package</tt>, run</p>
+
+    <p><tt><i>tested-program</i> | rtfl-filter-out-classes "some::package::*" | rtfl-objview [<i>options</i>]</tt></p>
+
+    <p><strong>N. b.</strong> that since versioning and escaping of
+      protocols, parsing is incorrect:</p>
+
+    <ul>
+      <li>The tag is checked as <tt>/^\[rtfl[^\]]*\]/</tt>, which
+	matches more as it should. (Fixed when using <tt>rtfl-objbase</tt>,
+    see below.)</li>
+      <li>More serious: the object module (prefix in the pre-version
+	protocol) is considered as optional; e.&nbsp;g.
+	<tt>(obj-)?create</tt> is used to cover both versions. This
+	may conflict with another module which also contains a
+	command <tt>create</tt>. (Fixed when using <tt>rtfl-objbase</tt>,
+    see below.)</li>
+      <li>Splitting up the line is done as before, ignoring quoting.
+	This works as long as there are no colons in parts where no
+	colons were allowed before (all parts except the last one).
+	For object identifiers etc., this will be still the case, but
+	for some parts (like method identifiers, which may in some
+	cases be fully qualified as <tt>Class::method</tt>), this may
+	cause problems in the future.</li>
+      <li>In one case quoting is supported: <tt>rtfl-objfilter</tt>
+	unquotes class names, replacing “\:” by “:” (but non “\\” by
+	“\”). This is done regardless of the protocol version, which
+	works as long as there are no backslashes in class names.</li>
+    </ul>
+
+    <p>Furthermore, <a href="#using_rtfl_objbase"><tt>rtfl-objbase</tt></a>
+      should be used by all scripts to achieve a uniform handling of
+      <a href="#protocol_obj_ident"><tt>obj-ident</tt></a> and 
+      <a href="#protocol_obj_delete"><tt>obj-delete</tt></a>, as well as
+      to fix some parsing problems. Currently, this has been done for
+      <tt>rtfl-filter-out-classes</tt> and <tt>rtfl-objtail</tt>.</p>
+
+    <h2 id="see_also">See also</h2>
+
+    <ul>
+      <li>RTFL website:
+	<a href="http://home.gna.org/rtfl/">http://home.gna.org/rtfl/</a></li>
+      <li><a href="tipsandtricks.html">Tips and tricks</a></li>
+    </ul>
+
+    <hr/>
+
+    <p><sup><a id="note-protocol-compat" href="#ref-protocol-compat">[1]</a></sup>
+      Some notes and definitions:</p>
+
+    <p><em>Backward compatibility</em> means than a parser can focus
+      on one new version and ignore differences to older
+      versions. Backward compatibility is <em>not</em> generally
+      given, only within a major version; instead, a parser must be
+      aware of older versions. However, changes will be made in a way
+      making this as simple as possible; how this is done will be
+      decided from case to case.</p>
+
+    <p><em>Forward compatibility</em> means than a parser implementing
+      an older version can deal with newer versions. Forward
+      compatibility is given within a major version, by defining the
+      following rules:</p>
+
+    <ul>
+      <li>All lines with an unsupported <em>major</em> version for a
+	given protocol module must be ignored, as well as lines from
+	unsupported protocol modules.</li>
+      <li>For unsupported <em>minor</em> versions,
+	<ul>
+	  <li>new commands and</li>
+	  <li>unexpected arguments at the end</li>
+	</ul>
+	must be ignored.</li>
+    </ul>
+
+    <p>This implies that there are two ways how a protocol module can
+      be extended in a forward compatible way (leading to a
+      new <em>minor</em> version):</p>
+
+    <ul>
+      <li>adding new commands, and</li>
+      <li>adding new optional arguments (at the end) to existing
+	commands.</li>
+    </ul>
+
+    <p>For simplicity, a parser may simply check the module
+      and <em>major</em> version, and, for supported modules and major
+      versions, ignore new commands and new arguments. New
+      forward-compatible changes can be implemented by and by.</p>
+
+    <p><sup><a id="note-protocol-version" href="#ref-protocol-version">[2]</a></sup>
+      Currently, there is no version for the general part of the
+      protocol, which is independent of the modules. This may change
+      when the general protocol changes.</p>
+    
+    <p><sup><a id="note-mix-versions" href="#ref-mix-versions">[3]</a></sup>
+      Since a stream may consist of command lines of different
+      protocol modules, it can consist of command lines with different
+      versions. It is even allowed to mix different versions of the same
+      protocol module.</p>
+
+    <p><sup><a id="note-old-protocol" href="#ref-old-protocol">[4]</a></sup>
+
+      An old version of the protocol, called “pre-version protocol”,
+      is still supported for the objects module, albeit deprecated.
+      Lines start with <tt>[rtfl]</tt>, with neither module name nor
+      version; the module name is put before the command
+      (example: <tt>obj-create</tt>). No escaping mechanism is defined, so
+      that only the last part may contain colons. If not otherwise
+      stated, the specific commands are equivalent</p>
+
+    <p><sup><a id="note-obj-color-old" href="#ref-obj-color-old">[5]</a></sup>
+      In the “pre-version protocol”, <tt>obj-color</tt> is still a
+      (deprecated) synonym of <tt>obj-class-color</tt>.</p>
+
+    <p><sup><a id="note-obj-class-color-old" href="#ref-obj-class-color-old">[6]</a></sup>
+      In the “pre-version protocol”, the order of the arguments
+      is <tt>obj-class-color:<i>color</i>:<i>class</i></tt>,
+      since <i>class</i> typically contains colons, as used for C++
+      namespaces, which are only allowed in the last argument. As for
+      the macro, there are different versions, so you have to be
+      cautious. (As opposed to the protocols, old versions of macros
+      are not supported, since the file <tt>debug_rtfl.hh</tt> is
+      typically copied into the tested program, and so the maintainer
+      of the tested program is responsible.)
+    </p>
+
+    <p><sup><a id="note-class-color-specifity" href="#ref-class-color-specifity">[7]</a></sup>
+      The exact definition of the specifity of a pattern: number of
+      “?” − 100 ∙ number of “*” + 100 ∙ number of other
+      characters.</p>
+    
+    <p><sup><a id="note-class-color-specifity-old" href="#ref-class-color-specifity-old">[8]</a></sup>
+      In the “pre-version protocol”, the rule was different (the first
+      pattern was choosen), but for simplicity, newer versions of RTFL
+      treat the “pre-version protocol” like the new version.</p>
+  </body>
+</html>

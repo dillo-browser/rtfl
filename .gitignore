@@ -1,0 +1,12 @@
+config.*
+autom4te.cache
+Makefile
+Makefile.in
+configure
+compile
+build
+aclocal.m4
+depcomp
+install-sh
+stamp-h1
+missing

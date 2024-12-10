@@ -1,0 +1,415 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en">
+  <head>
+    <title>RTFL: Tips and tricks</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8"/>
+  </head>
+  <body>
+    <p>[<a href="rtfl.html">Back to RTFL documentation.</a>]</p>
+
+    <h1>Tips and tricks</h1>
+
+    <p>Here, I'll summarize some useful experiences during the work
+      on <a href="http://www.dillo.org/">dillo</a>, for which RTFL was
+      initially written.</p>
+
+    <h2>Preparing the tested program</h2>
+
+    <ul>
+      <li>Do not prepare your program for a specific purpose, but in a
+	way that the RTFL message tell what happens in the
+	program, <em>in an objective way</em>. Ideally, most
+	preparation work is done once and pays off for many different
+	debugging problems.</li>
+      <li>Use different aspects so that filtering (as
+	in <a href="rtfl.html#using_rtfl_objview"><tt>rtfl-objview</tt></a>)
+	helps to focus on your specific problem.
+      </li>
+    </ul>
+
+    <h2><a href="rtfl.html#using_rtfl_objview"><tt>rtfl-objview</tt></a></h2>
+
+    <h3>Work around bugs and flaws</h3>
+
+    <p>Currently, RTFL is not at the top of my priority list, but just
+      a mean to an end (with <a href="http://www.dillo.org/">dillo</a>
+      being the end). This means that I am not too motivated to fix
+      bugs which can be worked around:</p>
+    
+    <ul>
+      <li><del>There are several redrawing problems. Calling
+	<tt>xrefresh</tt> or switching between virtual screens should
+	should redraw everything correctly.</del> <i>(Redrawing
+	problems seem fixed now.)</i></li>
+      <li><del>Sometimes, the focused command is not visible. Pressing
+	Ctrl+N and then Ctrl+P should get it back into the viewport
+	again.</del> <i>(Scrolling problems seem fixed now.)</i></li>
+      <li>Use scripts to filter the RTFL messages. Hacking a script in
+	Perl is often much faster as integrating the functionality
+	into <tt>rtfl-objview</tt>. Some <a href="rtfl.html#scripts">useful
+	  scripts</a> are already part of RTFL.</li>
+    </ul>
+
+    <h3>General approach</h3>
+
+    <p>Run the tested program and pass the standard output via pipe
+      to <tt>rtfl-objview</tt>. The
+      <a href="rtfl.html#rtfl_objview_command_line_options">command
+	line options</a> <tt>-M</tt> and <tt>-O</tt> are useful to get
+      an overview, <tt>-a</tt> and <tt>-A</tt> will help you to filter
+      out irrelevant messages.</p>
+
+    <p>Then search for an entry point:</p>
+
+    <ul>
+      <li>First of all, get an overview what the objects displayed in
+	the diagram actually represent. In
+	<a href="http://www.dillo.org/">dillo</a>, many objects
+	represent elements of the rendered document, so if an element
+	is rendered wrong, it is important to find the respective
+	object.</li>
+      <li>Depending on the tested program, it may be useful to search
+	for strange patterns of function calls. Simple example:
+	endless recursions are easily recognized by a steadily
+	increasing indentation.</li>
+      <li>An often helpful approach is to examine the attributes:
+	search for the respective object and the respective attribute;
+	a value which looks strange is a good starting point.</li>
+    </ul>
+    
+    <p>If you have troubles to find the respective object, try to
+      color it via
+      <a href="rtfl.html#protocol_obj_object_color">obj-object-color</a>,
+      using a filter like
+      this:<sup><a id="ref-pre-version-1" href="#note-pre-version-1">[1]</a></sup></p>
+
+    <pre>sed 's/^\(\[rtfl-obj-1\.[0-9]*\].*\):set:\([^:]*\):words\.0\.text\/widget\/breakSpace:"Abc"$/\0\n\1:object-color:\2:#ff80ff/g'</pre>
+    
+    <p>which colors all objects to light purple which have the
+      attribute <tt>words.0.text/widget/breakSpace</tt> set to the
+      value <tt>"Abc"</tt>. This example is again taken
+      from <a href="http://www.dillo.org/">dillo</a>, like the
+      following one, which colors objects in the color in which they
+      are rendered (represented by the attribute
+      <tt>style.background-color</tt>):<sup><a id="ref-pre-version-2" href="#note-pre-version-2">[2]</a></sup></p>
+
+    <pre>sed 's/^\(\[rtfl-obj-1\.[0-9]*\].*\):set:\([^:]*\):style.background-color:\(#[0-9a-f]*\)$/\0\n\1:object-color:\2:\3/g'</pre>
+
+    <p>As soon as you have selected a specific command, try to
+      determine the commands before:</p>
+
+    <ul>
+      <li>Navigate through the
+	<a href="rtfl.html#rtfl_objview_navigation">previous
+	commands</a>.</li>
+      <li>Or use the <a href="rtfl.html#rtfl_objview_stack_traces">stack
+	  traces</a> function to get an overview.</li>
+      <li>One more tip: Use <i>Switch between related</i> for skipping
+	the messages within one method call if you think that the
+	problem is found outside of this method.</li>
+    </ul>
+
+    <h3>Advanced problems</h3>
+
+    <h4>CPU hogging</h4>
+    
+    <p>In this case, the number of messages (infinite) will be too
+      large for <tt>rtfl-objview</tt>. Simply use <tt>head(1)</tt> to
+      reduce them; for the number of lines, some trial and error is
+      necessary.</p>
+
+    <h4>Too many messages</h4>
+    
+    <p>In some cases, it is useful to concentrate on what happens at
+      the end, especially if the program aborts. In this cases, the
+      script <a href="rtfl.html#scripts"><tt>rtfl-objtail</tt></a>
+      helps to filter messages, but preserve relevant object
+      creations, associations etc. at the beginning. Again, some tests
+      are needed for the number of lines.</p>
+
+    <h4 id="transformation_of_attributes">Transformation of attributes</h4>
+
+    <p>While <a href="rtfl.html#protocol_obj_set"><tt>obj-set</tt></a>
+      is used to set actual attributes, it is sometimes useful to
+      accumulate values. Instead of adding code to the tested program,
+      filters can do this and add respective pseudo attributes. The
+      following snippet counts for each object (and each process) the
+      number of calls of the method
+      <tt>draw</tt>:<sup><a id="ref-pre-version-3" href="#note-pre-version-3">[3]</a></sup></p>
+
+      <pre><a href="rtfl.html#using_rtfl_tee">rtfl-tee</a> -b sh -c \
+   "grep '^\[rtfl\].*:obj-enter:[^:]*:[^:]*:[^:]*:draw:' | \
+    sed 's/^.*:\([^:]*\):obj-enter:\([^:]*\):.*$/\1:\2/g' | \
+    sort | uniq -c | \
+    sed 's/^ *\([^ ]*\)  *\([^:]*\):\(.*\)$/[rtfl]:0:\2:obj-set:\3:&lt;b&gt;called &lt;i&gt;draw&lt;\/i&gt;&lt;\/b&gt;:\1/g'"</pre>
+    
+    <h3>More tips</h3>
+      
+    <ul>
+      <li>Use the script
+	<a href="rtfl.html#scripts"><tt>rtfl-filter-out-classes</tt></a>
+	to reduce again messages. (I plan to integrate this
+	into <tt>rtfl-objview</tt>.)</li>
+      <li>The serial numbers preceding commands are often useful to
+	determine which command follows the other. E.&nbsp;g., by
+	comparing the numbers of attributes, it can be determined
+	which attribute possibly depends on another.</li>
+    </ul>
+
+    <h2>Attic</h2>
+
+    <p>Some ideas proved to be less practical that they looked at
+      first. Here, you will find several smaller projects which I have
+      abandoned, but you might find them useful as an inspiration.</p>
+
+    <h3><a href="http://www.dillo.org/">Dillo</a>: HTML
+      attribute <tt>rtfl-id</tt></h3>
+
+    <p>To make finding the exact relation between HTML elements of a
+      tested page and the <a href="http://www.dillo.org/">dillo</a>
+      widgets simpler, one could define a new HTML
+      element, <tt>rtfl-id</tt>, which is recognized by the HTML
+      parser of dillo and eventually passed to the respective
+      widget. (Printing a
+      <a href="rtfl.html#protocol_obj_set"><tt>obj-set</tt></a>
+      message is sufficient, storage in the widget is not necessary.)
+      This is demonstrated by the patch
+      <a href="#appendix_dillo_rtfl_id_diff"><tt>dillo-rtfl-id.diff</tt></a>
+      below.</p>
+
+    <p>Furthermore, a simple Perl
+      script, <a href="#appendix_add_rtfl_id_pl"><tt>add-rtfl-id.pl</tt></a>,
+      adds unique <tt>rtfl-id</tt>'s to a given HTML page (standard
+      input to standard output).</p>
+
+    <p>(<em>Warning:</em> both are incomplete.)</p>
+
+    <h3 id="attic_rtfl_findrepeat"><tt>rtfl-findrepeat</tt></h3>
+
+    <p><tt>Rtfl-findrepeat</tt> is a program which searches in a
+      stream for identical sequences. See comment at the beginning
+      of <tt>common/rtfl_findrepeat.cc</tt> for more details on
+      usage. Suitable arguments should be achieved by trial and
+      error.</p>
+
+    <p>The idea behind this: if a program hogs the CPU, it is most
+      likely that it does similar things again and again, by
+      error. With a bit of luck, this will result in identical RTFL
+      messages, which <tt>rtfl-findrepeat</tt> helps to
+      find. With <a href="http://www.dillo.org/">dillo</a>, however,
+      this rendered not as really usable, so I have moved
+      <tt>rtfl-findrepeat</tt> to here.</p>
+
+    <h2>Appendix</h2>
+
+    <h3 id="appendix_dillo_rtfl_id_diff"><tt>dillo-rtfl-id.diff</tt></h3>
+    
+    <pre>diff -r 45a8d0d4b0d6 dw/widget.hh
+--- a/dw/widget.hh	Mon Sep 08 23:20:10 2014 +0200
++++ b/dw/widget.hh	Tue Sep 09 13:09:08 2014 +0200
+@@ -502,6 +502,11 @@
+     */
+    virtual Iterator *iterator (Content::Type mask, bool atEnd) = 0;
+    virtual void removeChild (Widget *child);
++
++   void setRtflId (const char *rtflId) {
++      if (rtflId) DBG_OBJ_SET_STR ("rtfl-id", rtflId);
++      else DBG_OBJ_SET_SYM ("rtfl-id", "none");
++   }
+ };
+ 
+ void splitHeightPreserveAscent (int height, int *ascent, int *descent);
+diff -r 45a8d0d4b0d6 src/doctree.hh
+--- a/src/doctree.hh	Mon Sep 08 23:20:10 2014 +0200
++++ b/src/doctree.hh	Tue Sep 09 13:09:08 2014 +0200
+@@ -13,6 +13,7 @@
+       lout::misc::SimpleVector&lt;char*&gt; *klass;
+       const char *pseudo;
+       const char *id;
++      const char *rtflId;
+ 
+       DoctreeNode () {
+          parent = NULL;
+@@ -21,11 +22,13 @@
+          klass = NULL;
+          pseudo = NULL;
+          id = NULL;
++         rtflId = NULL;
+          element = 0;
+       };
+ 
+       ~DoctreeNode () {
+          dFree ((void*) id);
++         dFree ((void*) rtflId);
+          while (lastChild) {
+             DoctreeNode *n = lastChild;
+             lastChild = lastChild-&gt;sibling;
+diff -r 45a8d0d4b0d6 src/form.cc
+--- a/src/form.cc	Mon Sep 08 23:20:10 2014 +0200
++++ b/src/form.cc	Tue Sep 09 13:09:08 2014 +0200
+@@ -938,6 +938,7 @@
+        * but it caused 100% CPU usage.
+        */
+       page = new Textblock (false);
++      page-&gt;setRtflId (html-&gt;rtflId ());
+       page-&gt;setStyle (html-&gt;backgroundStyle ());
+ 
+       ResourceFactory *factory = HT2LT(html)-&gt;getResourceFactory();
+diff -r 45a8d0d4b0d6 src/html.cc
+--- a/src/html.cc	Mon Sep 08 23:20:10 2014 +0200
++++ b/src/html.cc	Tue Sep 09 13:09:08 2014 +0200
+@@ -362,6 +362,7 @@
+ static void Html_add_textblock(DilloHtml *html, bool addBreaks, int breakSpace)
+ {
+    Textblock *textblock = new Textblock (prefs.limit_text_width);
++   textblock-&gt;setRtflId (html-&gt;rtflId ());
+ 
+    if (addBreaks)
+       HT2TB(html)-&gt;addParbreak (breakSpace, html-&gt;wordStyle ());
+@@ -2186,6 +2187,7 @@
+    }
+ 
+    dw::Image *dw = new dw::Image(alt_ptr);
++   dw-&gt;setRtflId (html-&gt;rtflId ());
+    image =
+       a_Image_new(html-&gt;dw-&gt;getLayout(), (void*)(dw::core::ImgRenderer*)dw, 0);
+ 
+@@ -3038,6 +3040,7 @@
+    HT2TB(html)-&gt;addParbreak (5, html-&gt;wordStyle ());
+ 
+    hruler = new Ruler();
++   hruler-&gt;setRtflId (html-&gt;rtflId ());
+    hruler-&gt;setStyle (html-&gt;style ());
+    HT2TB(html)-&gt;addWidget (hruler, html-&gt;style ());
+    HT2TB(html)-&gt;addParbreak (5, html-&gt;wordStyle ());
+@@ -3783,6 +3786,10 @@
+    const char *attrbuf;
+    char lang[3];
+ 
++   if (tagsize &gt;= 13 &amp;&amp;        /* length of "&lt;t rtfl-id=i&gt;" */
++       (attrbuf = a_Html_get_attr(html, tag, tagsize, "rtfl-id")))
++      html-&gt;styleEngine-&gt;setRtflId(attrbuf);
++
+    if (tagsize &gt;= 8 &amp;&amp;        /* length of "&lt;t id=i&gt;" */
+        (attrbuf = a_Html_get_attr(html, tag, tagsize, "id"))) {
+       /* According to the SGML declaration of HTML 4, all NAME values
+@@ -3882,6 +3889,7 @@
+    HT2TB(html)-&gt;addParbreak (0, wordStyle);
+ 
+    list_item = new ListItem ((ListItem*)*ref_list_item,prefs.limit_text_width);
++   list_item-&gt;setRtflId (html-&gt;rtflId ());
+    HT2TB(html)-&gt;addWidget (list_item, style);
+    HT2TB(html)-&gt;addParbreak (0, wordStyle);
+    *ref_list_item = list_item;
+diff -r 45a8d0d4b0d6 src/html_common.hh
+--- a/src/html_common.hh	Mon Sep 08 23:20:10 2014 +0200
++++ b/src/html_common.hh	Tue Sep 09 13:09:08 2014 +0200
+@@ -234,6 +234,7 @@
+ 
+    inline void restyle () { styleEngine-&gt;restyle (bw); }
+ 
++   inline const char *rtflId () { return styleEngine-&gt;rtflId (); }
+ };
+ 
+ /*
+diff -r 45a8d0d4b0d6 src/styleengine.cc
+--- a/src/styleengine.cc	Mon Sep 08 23:20:10 2014 +0200
++++ b/src/styleengine.cc	Tue Sep 09 13:09:08 2014 +0200
+@@ -160,6 +160,12 @@
+    dn-&gt;id = dStrdup (id);
+ }
+ 
++void StyleEngine::setRtflId (const char *rtflId) {
++   DoctreeNode *dn =  doctree-&gt;top ();
++   assert (dn-&gt;rtflId == NULL);
++   dn-&gt;rtflId = dStrdup (rtflId);
++}
++
+ /**
+  * \brief split a string at sep chars and return a SimpleVector of strings
+  */
+diff -r 45a8d0d4b0d6 src/styleengine.hh
+--- a/src/styleengine.hh	Mon Sep 08 23:20:10 2014 +0200
++++ b/src/styleengine.hh	Tue Sep 09 13:09:08 2014 +0200
+@@ -77,6 +77,7 @@
+       void startElement (int tag, BrowserWindow *bw);
+       void startElement (const char *tagname, BrowserWindow *bw);
+       void setId (const char *id);
++      void setRtflId (const char *rtflId);
+       const char * getId () { return doctree-&gt;top ()-&gt;id; };
+       void setClass (const char *klass);
+       void setStyle (const char *style);
+@@ -122,6 +123,10 @@
+          else
+             return wordStyle0 (bw);
+       };
++
++      inline const char *rtflId () {
++         return stack-&gt;getRef(stack-&gt;size()-1)-&gt;doctreeNode-&gt;rtflId;
++      };
+ };
+ 
+ #endif
+diff -r 45a8d0d4b0d6 src/table.cc
+--- a/src/table.cc	Mon Sep 08 23:20:10 2014 +0200
++++ b/src/table.cc	Tue Sep 09 13:09:08 2014 +0200
+@@ -158,6 +158,7 @@
+ 
+    HT2TB(html)-&gt;addParbreak (0, html-&gt;wordStyle ());
+    table = new dw::Table(prefs.limit_text_width);
++   table-&gt;setRtflId (html-&gt;rtflId ());
+    HT2TB(html)-&gt;addWidget (table, html-&gt;style ());
+    HT2TB(html)-&gt;addParbreak (0, html-&gt;wordStyle ());
+ 
+@@ -451,6 +452,7 @@
+                      prefs.limit_text_width);
+       else
+          col_tb = new SimpleTableCell (prefs.limit_text_width);
++      col_tb-&gt;setRtflId (html-&gt;rtflId ());
+ 
+       if (html-&gt;style()-&gt;borderCollapse == BORDER_MODEL_COLLAPSE){
+          Html_set_collapsing_border_model(html, col_tb);</pre>
+
+    <h3 id="appendix_add_rtfl_id_pl"><tt>add-rtfl-id.pl</tt></h3>
+
+    <pre>#!/usr/bin/perl
+
+$id = 0;
+
+while(&lt;STDIN&gt;) {
+   chomp;
+   $first = 1;
+   foreach $part (split /w&lt;/) {
+      if ($first) {
+         print $part;
+      } else {
+         if ($part =~ /^\//) {
+            print "&lt;$part";
+         } else {
+            $part =~ s/([^ &gt;]*)/\1 rtfl-id="$id"/;
+            $id++;
+            print "&lt;$part";
+         }
+      }
+      $first = 0;
+   }
+   print "\n";
+}</pre>
+
+    <hr/>
+
+    <p><sup><a id="note-pre-version-1" href="#ref-pre-version-1">[1]</a></sup>
+      Use this for the pre-version protocol:</p>
+    <pre>sed 's/^\(\[rtfl\].*\):obj-set:\([^:]*\):words\.0\.text\/widget\/breakSpace:"Abc"$/\0\n\1:obj-object-color:\2:#ff80ff/g'</pre>
+
+    <p><sup><a id="note-pre-version-2" href="#ref-pre-version-2">[2]</a></sup>
+      Again, for the pre-version protocol:</p>
+    <pre>sed 's/^\(\[rtfl\].*\):obj-set:\([^:]*\):style.background-color:\(#[0-9a-f]*\)$/\0\n\1:obj-object-color:\2:\3/g'</pre>
+
+    <p><sup><a id="note-pre-version-3" href="#ref-pre-version-3">[3]</a></sup>
+      This works only with the pre-version protocol. Should be
+      adjusted eventually.</p>
+
+  </body>
+</html>

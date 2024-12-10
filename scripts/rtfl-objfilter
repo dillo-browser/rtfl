@@ -1,0 +1,110 @@
+#!/usr/bin/perl
+
+# RTFL
+#
+# Copyright 2014 Sebastian Geerken <sgeerken@dillo.org>
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+# Usage: rtfl-objfilter [options]
+#
+# Filters a stream of RTFL messages by types, aspects and priorities.
+# The options -a, -A, -t, -T, and -p are supported and work in the
+# same way as for rtfl-objview. By default, nothing is filtered.
+#
+# N. b. that parsing is incorrect, see <doc/rtfl.html#scripts>.
+
+$LARGE_INT = 1000000000;
+
+sub helpAndExit { 
+   die "Syntax: $0 uses same arguments -a, -A, -t, -T, and -p as rtfl-objview.";
+}
+
+sub filter1 {
+   return $shownTypes{$_[0]};
+}
+
+sub filter2 {
+   return $shownTypes{$_[0]} &&
+      (($defaultShow && !$hiddenAspects{$_[1]}) ||
+       (!$defaultShow && !$shownAspects{$_[1]})) &&
+       $_[2] >= $prio;
+}
+
+
+%shownAspects = {};
+%hiddenAspects = {};
+$defaultShow = 1;
+%shownTypes =
+   ( "i" => 1, "m" => 1, "a" => 1, "f" => 1, "s" => 1, "t" => 1, "d" => 1 );
+$prio = $LARGE_INT;
+
+for ($i = 0; $i < scalar @ARGV; $i++) {
+   $opt = $ARGV[$i];
+   helpAndExit if ($i == scalar @ARGV -1);
+   $arg = $ARGV[++$i];
+
+   if ($opt eq "-a") {
+      if (arg eq "*") { $defaultShow = 1; }
+      else { $shownAspects{$arg} = 1; }
+   } elsif ($opt eq "-A") {
+      if (arg eq "*") { $defaultShow = 0; }
+      else { $hiddenAspects{$arg} = 1; }
+   } elsif ($opt eq "-t" || $opt eq "-T") {
+      $show = $opt eq "-t";
+      for ($i = 0; $i < length ($arg); $i++) {
+         $shownTypes{substr ($arg, $i, 1)} = $show;
+      }
+   } elsif ($opt eq "-p") {
+      if ($arg eq "*") { $prio = $LARGE_INT; }
+      else { $prio = $arg; }
+   } else {
+      helpAndExit if ($method eq "");
+   }
+}
+
+@shownFuns = ();
+
+while(<STDIN>) {
+   if (/^\[rtfl[^\]]*\]/) {
+      if (/^\[rtfl[^\]]*\][^:]*:[^:]*:[^:]*:(obj-)?mark:[^:]*:([^:]*):([^:]*):/) {
+         print if (filter2 ("a", $2, $3));
+      } elsif (/^\[rtfl[^\]]*\][^:]*:[^:]*:[^:]*:(obj-)?msg:[^:]*:([^:]*):([^:]*):/) {
+         print if (filter2 ("m", $2, $3));
+      } elsif (/^\[rtfl[^\]]*\][^:]*:[^:]*:[^:]*:(obj-)?msg-start:/ ||
+               /^\[rtfl[^\]]*\][^:]*:[^:]*:[^:]*:(obj-)?msg-end:/) {
+         print if (filter1 ("i"));
+      } elsif (/^\[rtfl[^\]]*\][^:]*:[^:]*:[^:]*:(obj-)?set:/) {
+         print if (filter1 ("t"));
+      } elsif (/^\[rtfl[^\]]*\][^:]*:[^:]*:[^:]*:(obj-)?delete:/) {
+         print if (filter1 ("d"));
+      } elsif (/^\[rtfl[^\]]*\][^:]*:[^:]*:[^:]*:(obj-)?enter:[^:]*:([^:]*):([^:]*):/) {
+         $shown = filter2 ("f", $2, $3);
+         print if ($shown);
+         push @shownFuns, $shown;
+      } elsif (/^\[rtfl[^\]]*\][^:]*:[^:]*:[^:]*:(obj-)?leave:/) {
+         $show = pop @shownFuns;
+         print if ($shown);
+      } elsif (/^\[rtfl[^\]]*\][^:]*:[^:]*:[^:]*:(obj-)?create:/ ||
+               /^\[rtfl[^\]]*\][^:]*:[^:]*:[^:]*:(obj-)?assoc:/ ||
+               /^\[rtfl[^\]]*\][^:]*:[^:]*:[^:]*:(obj-)?color:/ ||
+               /^\[rtfl[^\]]*\][^:]*:[^:]*:[^:]*:(obj-)?class-color:/ ||
+               /^\[rtfl[^\]]*\][^:]*:[^:]*:[^:]*:(obj-)?object-color:/ ||
+               /^\[rtfl[^\]]*\][^:]*:[^:]*:[^:]*:(obj-)?ident:/) {
+         print;
+      } else {
+        print STDERR "Invalid line: $_";
+      }
+   }
+}

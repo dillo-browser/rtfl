@@ -1,0 +1,149 @@
+Version 0.1.1 (Jul 31 2016)
+---------------------------
+General changes:
+- New "general" protocol module, with one command, "time".
+- Programs always read a file ".rtfl" in the current directory.
+- New program "rtfl-objbase".
+
+Rtfl-objview:
+- Some work on Graph2 (updated to Graphviz version 2.38.0, fixed rendering bug,
+  draw edges as b-splines, better library detection by configure script). It is
+  now the default.
+- Ids of deleted objects are now forgotten.
+- "obj-create" is now navigable.
+- New option "-b"/"-B".
+- Fixed bug when displaying stack trace.
+
+Miscellaneous:
+- Scripts now honour optional return values of "obj-leave".
+
+New:
+- Started work on JVM agent, which automates many RTFL messages.
+
+Internal Changes:
+- ObjectsController (and implementations), LinesSource, LinesSink.
+
+
+Version 0.1 (Feb 05 2015)
+-------------------------
+General changes:
+- Versioning of protocol modules.
+- Quoting in the protocol, so that a literal ':' is possible.
+- Macros for "obj-mark", DBG_OBJ_MARK and DBG_OBJ_MARKF.
+- "obj-leave" now supports optional return values; new macro DBG_OBJ_LEAVE_VAL.
+
+Rtfl-objview:
+- Class patterns in "obj-class-color" are now sorted by specifity.
+- Fixed redrawing and scrolling problem.
+- Fixed sorting of attributes.
+- "Switch between related" now also supports "obj-msg-start" and "obj-msg-end".
+- Attributes with no children (sub-attributes or "obj-set" commands) are now
+  hidden.
+- Colorful stacktrace.
+
+Internal changes:
+- Updated to newer version of dillo widget (revision 3948:0769a58d63f9
+  from <http://hg.dillo.org/dillo>).
+- The ascent of VBox is now the ascent of the first *visible* child.
+
+
+Version 0.0.9 (Oct 26 2014)
+---------------------------
+- New scripts "rtfl-stacktraces" and "rtfl-objfilter".
+- New filters "rtfl-findrepeat" and "rtfl-tee".
+- Updated other scripts: "obj-enter" and "obj-leave" are now regarded.
+- Options "-a" and "-A" for "rtfl-objtail".
+- Fixed parser bug.
+- New command "obj-mark".
+- New command "obj-object-color"; renamed "obj-color" to "obj-class-color".
+- Updated parser of rtfl-objcount (eventually by the common parser).
+- DBG_OBJ_COLOR: order of arguments has changed from (color, class) to
+  (class, color).
+- Rtfl-objview: Experimental graph widget based on Graphviz ("./configure
+  --enable-graph2").
+- Rtfl-objview: Attributes are sorted alphabetically on the first level.
+
+Internal changes:
+- General method Container::size() in lout::container.
+- Methods "equal" and "hashValue" work now partly for containers.
+- Common parser for objects module.
+
+
+Version 0.0.8 (Jul 20 2014)
+---------------------------
+- Scripts are now part of the RTFL package.
+- New commands "obj-enter" and "obj-leave" (and respective macros)
+- "Show strack trace" in rtfl-objview.
+- "Switch between related" commands (currently "obj-enter" and "obj-leave")
+
+
+Version 0.0.7 (May 26 2014)
+---------------------------
+- Renamed "debug.hh" to "debug_rtfl.hh" and moved it to root directory.
+- New macros DBG_OBJ_ARRATTRSET_*.
+- "obj-msg-start" and "obj-msg-end" add messages (hidden by default).
+- All navigable commands can be hidden, selectable by type.
+- Hide all/show all commands; view code of command.
+- Command line arguments.
+- Corrected macros (DBG_OBJ_MSG_START and DBG_OBJ_MSG_END).
+- Tests now in two versions: with and without RTFL messages active.
+- Fixed (or worked around) overflow error in graph widget (arrow heads).
+- Fixed overflow error in hbox and vbox widget.
+- Fixed some memory problems.
+
+
+Version 0.0.6 (Dec 29 2013)
+---------------------------
+- "\n" at the beginning of RTFL messages.
+- Fixed a bug introduced with 0.0.5 (indented messages).
+
+
+Version 0.0.5 (Dec 26 2013)
+---------------------------
+Important note: "rtfl-objects" has been renamed to "rtfl-objview", so you
+should delete the old "rtfl-objects" from the target directory (typically
+/usr/local/bin).
+
+Furthermore:
+- UI changes (menu bar).
+- Selectable and navigable command.
+- Filtering of "obj-msg".
+- New protocol command "obj-delete".
+- Fixed a bug related to "obj-ident".
+- New viewer "rtfl-objcount".
+
+Internal changes:
+- Fixed bug in dw related to inverse backgrounds.
+- Fixed handling zero size children in rtfl::dw::HBox and rtfl::dw::VBox.
+- Added link handling in rtfl::dw::Label.
+
+
+Version 0.0.4 (Dec 12 2013)
+---------------------------
+- Fixed a bug (parser) introduced by 0.0.3.
+
+
+Version 0.0.3 (Dec 12 2013)
+---------------------------
+- Numbers are preceeded to some commands.
+- Fixed two I/O related bugs (buffered reading of commands, cpu hogging).
+
+Internal changes:
+- Made parser more robust (should not crash anymore).
+
+
+Version 0.0.2 (Dec 09 2013)
+---------------------------
+- Fixed some flaws in tests/debug.hh.
+- Implemented "obj-color".
+- New command "obj-ident" and macro DBG_OBJ_BASECLASS.
+- Documentation "rtfl.html".
+
+Internal changes:
+- Some work on widgets (rtfl::dw): removeChild, registration of class names.
+- ObjectsGraph: list of commands, which can be undone (partly incomplete).
+
+
+Version 0.0.1 (Dec 01 2013)
+---------------------------
+- Initial release.

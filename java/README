@@ -1,0 +1,40 @@
+This sub-project aims to provide an agent for the Java Virtual
+Machine, which uses the JVM Tool Interface (see [1] and [2]) to print
+RTFL messages for Java programs, which must not necessarily be
+prepared. This makes using RTFL much less time-consuming and so lowers
+the entrance barrier.
+
+The agent consists of the file "librtfl-jvm-ti.so", which is passed to
+"java" by the option "-agentlib:rtfl-jvm-ti"; see Makefile.am for
+details.
+
+Run "make run-hello" or "run run-test-rtfl-objects-1" to run some
+sample programs with the agent.
+
+
+How it works
+------------
+Several commands from the object module (like "create") follow the
+program structure, and can so easily be printed when the respective
+JVM-TI event is processed. Others (like "enter") can be printed by
+this approach, but some parameters are missing (aspect and priority)
+and so replaced by standard values (empty aspect and priority 0). It
+is planned to make these parameters configurable, either by files or
+by annotations.
+
+A third group of commands (like "msg") must still be added explicitly
+to code. (For "msg", one could think of an integration with existing
+logging frameworks.)
+
+Since Java programs often use many third-party code (libraries,
+containers, ...), it is crucial for the performance to filter quite
+early, and so reduce the total amount of messages. Filtering by
+packages seems feasible (like "com.acme" and sub-packages when code of
+ACME is debugged). Currently, only "rtfl" and its sub-packages are
+considered; this is hard-coded in the function include_class() in
+"config.c".
+
+----------------------------------------------------------------------
+
+[1] http://docs.oracle.com/javase/8/docs/technotes/guides/jvmti/index.html
+[2] http://www.oracle.com/technetwork/articles/javase/jvmti-136367.html

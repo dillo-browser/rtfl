@@ -1,0 +1,149 @@
+Overview
+--------
+RTFL, which stands for "Read The Figurative Logfile", is a both a
+protocol for structured debug messages, as well as a collection of
+programs (currently two) displaying these debug messages in a
+semi-graphical way, so that it becomes simpler to determine what the
+debugged program does.
+
+Programs are prepared to print these special debug messages to
+standard output, which are then passed to a viewer program like
+"rtfl-objcount" or "rtfl-objview".
+
+See "doc/rtfl.html" for a comprehensive description.
+
+
+Copyright
+---------
+RTFL is free software, released under the GPL version 3 or later (see
+COPYING for details), with the following exception:
+
+The copyright holders of RTFL give you permission to link the program
+rtfl-objview statically or dynamically against all versions of the
+graphviz library, which are published by AT&T Corp. under one of the
+following licenses:
+
+- Common Public License version 1.0 as published by International
+  Business Machines Corporation (IBM), or
+- Eclipse Public License version 1.0 as published by the Eclipse
+  Foundation.
+
+Both the protocol and the header file "debug_rtfl.hh", which provides
+macros for the protocol, are not protected at all, but in the public
+domain. This means that are no restrictions for the programs being
+debugged using RTFL.
+
+Some (informal) notes about the exception:
+
+1. Graphviz, which is used by the Graph2 widget, is published under
+   the Eclipse Public License version 1.0, older versions are
+   published under the Common Public License version 1.0. Both
+   licenses are free software licenses, but weak copyleft licenses,
+   and so incompatible with any version the GNU General Public
+   License. See [1] and [2] for details. The license exception solves
+   this.
+
+2. Since the CPL and EPL are *weak* copyleft licenses, there is no
+   problem in the other direction.
+
+3. All parts of RTFL are still compatible with the GNU GPL.
+
+4. I want to restrict this license exception to free libraries; this
+   is the reason that the CPL and the EPL are explicitly mentioned. If
+   you have some "technical" problems with this limitation, feel free
+   to contact me (see below).
+
+
+Building
+--------
+As usual: "./configure && make && make install" (or "install-strip");
+see "INSTALL" for details. If you are using the version from SVN
+instead of the release tarball, you have to run "libtoolize && aclocal
+&& autoconf && automake" before.
+
+You need FLTK version 1.3 (try "fltk-config --version"). Get it from
+<http://fltk.org/software.php>, or install a package suitable for your
+operating system (on Debian: "apt-get install libfltk1.3-dev").
+
+There is a widget, Graph2, which enhances the graph layouting of
+rtfl-objview, as compared to the older Graph widget, and it has
+matured enough to become the default. It depends on the Graphviz
+library (see <http://www.graphviz.org/Download.php> or install a
+suitable package, e. g. "libgraphviz-dev" on Debian), version 2.38.0
+or later. If you use an older version, try to modify "configure.ac";
+if you succeed, drop me a note.
+
+If Graphviz is not installed, the old Graph widget is used. If you
+want to use the old Graph widget in any case, run "./configure" with
+"--disable-graph2" to use the old widget.
+
+Furthermore, there has been some work on a Java VM agent, which
+automates generation of RTFL messages by Java programs. The JDK is
+searched according to following rules:
+
+  (i) If "--disable-java" is passed to "./configure", the JVM agent is
+      not build at all.
+ (ii) The root of the JDK (under which "bin", "include" etc. are
+      found) may be passed explicitly by "--with-java-home=...".
+(iii) Otherwise, "javac" is found in the path, its symbolic links are
+      followed, and so the root of the JDK is searched.
+
+Of course, if "javac" is not found, or some crucial files within the
+JDK are missing, the agent is neither build.
+
+See java/README for more details.
+
+
+Hacking
+-------
+RTFL uses parts of the dillo widget from the dillo web browser
+(<http://www.dillo.org/>); see "lout" and "dw" directory. The current
+version was taken on Oct 27 2014 from the repository
+<http://hg.dillo.org/dillo>, revision 3948:0769a58d63f9. Few changes
+are generally made:
+
+- the parts of "libDw-widgets.a" are removed, they are not needed in
+  RTFL;
+
+- dw::fltk::ui:ComplexButtonResource and related classes and files
+  (FltkFlatView and ComplexButton) are removed, since they are not
+  needed, and (this is actually the main reason) the copyright of
+  ComplexButton is a bit unclear [3];
+
+- the copyright notices are modified by adding the license exception
+  (this is automated with the script "update_copyright" which is part
+  of the SVN repository, albeit not release tarball).
+
+Smaller changes to "lout" and "dw" can be made within RTFL; from time
+to time, these changes should be back-ported, before a new version of
+"lout" and "dw" is copied to RTFL.
+
+The directory "dwr" provides some general dillo widgets used in RTFL,
+and "common" base code for all viewers and protocol modules. Specific
+viewers and protocol modules have there own directory (currently only
+"objects": may become subject to change.)
+
+
+Future
+------
+First of all, there are numerous bugs, flaws, and things to
+improve. (No list yet.)
+
+For more, see the file <http://home.gna.org/rtfl/future.html".
+
+
+Contact
+-------
+Write to Sebastian Geerken <sgeerken-at-dillo.org>. See
+<http://home.gna.org/rtfl/> for news.
+
+
+Footnotes
+---------
+[1] http://www.gnu.org/philosophy/license-list.html#CommonPublicLicense10
+
+[2] http://www.gnu.org/philosophy/license-list.html#EPL
+
+[3] Nothing serious; ComplexButton is a derivate of the Button widget
+    of FLTK, which is released under the GNU LGPL, so that linking
+    with the graphviz library should not cause a problem.

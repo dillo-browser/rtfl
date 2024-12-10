@@ -1,0 +1,134 @@
+#!/usr/bin/perl
+
+# RTFL
+#
+# Copyright 2014 Sebastian Geerken <sgeerken@dillo.org>
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 3 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+# Usage: rtfl-objtail [-a <attributes> ...] [-A <attributes> ...] <len>
+#
+# Print only the last lines of a stream of RTFL messages, but include
+# those RTFL messages which are necessary to understand the last ones,
+# like "obj-create", "obj-assoc" etc., when they refer to objects in
+# the last lines.
+#
+# Any number of options "-a" and "-A" may be added with fnmatch(3)
+# like patterns; for those attributes specified by "-a", but not
+# excluded by "-A", the last attribute definitions before the actual
+# tail is shown for relevant objects.
+#
+# Example: "-a 'foo.*' -A '*.bar'" will show attribute values for
+# 'foo.qix', but not for, say, 'foo.bar', since "-A '*.bar'" overrides
+# "-a 'foo.*'".
+#
+# The opposite, "rtfl-objhead", is not needed; simply use "head" to
+# get the first lines.
+#
+# N. b. that parsing is slightly incorrect; escaping is not considered.
+
+use File::FnMatch qw(:fnmatch);
+
+sub helpAndExit { 
+   die "Syntax: $0 [-a <attributes> ...] [-A <attributes> ...] <number of lines>";
+}
+
+$tlen = "";
+@attrs = ();
+@neg_attrs = ();
+
+for ($i = 0; $i < scalar @ARGV; $i++) {
+   if ($ARGV[$i] eq "-a") {
+      helpAndExit if ($i == scalar @ARGV -1);
+      push @attrs, $ARGV[++$i];
+   } elsif ($ARGV[$i] eq "-A") {
+      helpAndExit if ($i == scalar @ARGV -1);
+      push @neg_attrs, $ARGV[++$i];
+   } else {
+      $tlen = $ARGV[$i];
+   }
+}
+
+helpAndExit if ($tlen eq "");
+
+@all_lines = ();
+%rel_objects = { };
+%last_attrs = { };
+
+open PIPE, "rtfl-objbase |";
+
+while(<PIPE>) {
+   if (/^\[rtfl-obj-1.[0-9]+]/) { push @all_lines, $_; }
+}
+
+close PIPE;
+
+$len = scalar (@all_lines);
+if ($tlen > $len) {
+   $tlen = $len;
+}
+
+# Determine relevant objects from the last lines.
+for ($i = $len - $tlen; $i < $len; $i++) {
+   $_ = $all_lines[$i];
+   if (/^\[rtfl-obj-1.[0-9]+][^:]*:[^:]*:[^:]*:(obj-)?(create|msg|set|enter|leave):([^:]*):/ ||
+       /^\[rtfl-obj-1.[0-9]+][^:]*:[^:]*:[^:]*:(obj-)?(msg-start|msg-end|delete|leave):(.*)$/) {
+      $rel_objects{$3} = 1;
+   } elsif (/^\[rtfl-obj-1.[0-9]+][^:]*:[^:]*:[^:]*:(obj-)?assoc:([^:]*):(.*)$/) {
+      $rel_objects{$2} = 1;
+      $rel_objects{$3} = 1;
+   }
+}
+
+# Determine the last attribute values before the last lines.
+for ($i = 0; $i < $len - $tlen; $i++) {
+   $_ = $all_lines[$i];
+   if (/^\[rtfl-obj-1.[0-9]+][^:]*:[^:]*:[^:]*:(obj-)?set:([^:]*):([^:]*):(.*)/ &&
+       $rel_objects{$2}) {
+      $found = 0;
+      for ($j = 0; $j < scalar (@attrs) && !$found; $j++) {
+         if (fnmatch ($attrs[i], $3)) { $found = 1; }
+      }
+      for ($j = 0; $j < scalar (@neg_attrs) && $found; $j++) {
+         if (fnmatch ($neg_attrs[i], $3)) { $found = 0; }
+      }
+      
+      if ($found) {
+         $last_attrs{"$2:$3"} = $_;
+      }
+   }
+}
+
+foreach (keys %last_attrs) {
+   print $last_attrs{$_};
+}
+
+# Print all relevant lines (both before the last lines and the last lines).
+for ($i = 0; $i < $len; $i++) {
+   $_ = $all_lines[$i];
+   if (/^\[rtfl-obj-1.[0-9]+][^:]*:[^:]*:[^:]*:(obj-)?color:/ ||
+       /^\[rtfl-obj-1.[0-9]+][^:]*:[^:]*:[^:]*:(obj-)?class-color:/ ||
+       /^\[rtfl-obj-1.[0-9]+][^:]*:[^:]*:[^:]*:(obj-)?object-color:/) {
+      print;
+   } elsif ($i >= $len - $tlen) {
+      print;
+   } elsif ((/^\[rtfl-obj-1.[0-9]+][^:]*:[^:]*:[^:]*:(obj-)?create:([^:]*):/ ||
+             /^\[rtfl-obj-1.[0-9]+][^:]*:[^:]*:[^:]*:(obj-)?delete:(.*)$/) &&
+            $rel_objects{$2}) {
+      print;
+   } elsif (/^\[rtfl-obj-1.[0-9]+][^:]*:[^:]*:[^:]*:(obj-)?assoc:([^:]*):(.*)$/
+            && $rel_objects{$2} && $rel_objects{$3}) {
+         print;
+   }
+}
